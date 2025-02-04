@@ -1,0 +1,34 @@
+trigger: none 
+pr: none 
+ 
+pool: 
+  vmImage: 'ubuntu-latest'
+ 
+parameters:
+- name: stages
+  type: object
+  default:
+    - 'dev'
+    - 'prod'
+ 
+stages:
+- stage: build
+  displayName: 'Build/Package Code or IaC' 
+  jobs: 
+  - job: build
+    displayName: 'Build/Package Code'
+    steps:
+    # Steps to perform the build and/or package of code or IaC
+ 
+- ${{ each stage in parameters.stages }}:
+  - stage: ${{ stage }}
+    displayName: 'Deploy to ${{ stage }}'
+    jobs:
+    - deployment: deploy_${{ stage }}
+      displayName: 'Deploy app to ${{ stage }}'
+      environment: ${{ stage }}
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            # Steps to perform the deployment
