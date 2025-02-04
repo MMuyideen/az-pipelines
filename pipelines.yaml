@@ -4,24 +4,27 @@ pr: none
 pool:
   vmImage: 'ubuntu-latest'
  
+steps:
+  template: ./template.yaml
+  parameters:
+    buildSteps:
+    - task: CopyFiles@2
+      displayName: 'Copy Files to output'
+      inputs:
+        contents: |
+          **/infrastructure/**
+        targetFolder: $(Build.ArtifactStagingDirectory)
+    - task: ArchiveFiles@2
+      displayName: 'Archive Infrastructure'
+      inputs:
+        rootFolderOrFile: $(Build.ArtifactStagingDirectory)
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/infrastructure$(Build.BuildId).zip'
+    - publish: $(Build.ArtifactStagingDirectory)/infrastructure$(Build.BuildId).zip
+      displayName: 'Upload Infrastructure package'
+      artifact: infrastructure
+    customReleaseTemplate: deploy-infrastructure.yml@self
 
-template: ./template.yaml
-parameters:
-  buildSteps:
-  - task: CopyFiles@2
-    displayName: 'Copy Files to output'
-    inputs:
-      contents: |
-        **/infrastructure/**
-      targetFolder: $(Build.ArtifactStagingDirectory)
-  - task: ArchiveFiles@2
-    displayName: 'Archive Infrastructure'
-    inputs:
-      rootFolderOrFile: $(Build.ArtifactStagingDirectory)
-      includeRootFolder: false
-      archiveType: 'zip'
-      archiveFile: '$(Build.ArtifactStagingDirectory)/infrastructure$(Build.BuildId).zip'
-  - publish: $(Build.ArtifactStagingDirectory)/infrastructure$(Build.BuildId).zip
-    displayName: 'Upload Infrastructure package'
-    artifact: infrastructure
-  customReleaseTemplate: deploy-infrastructure.yml@self
+
+  
