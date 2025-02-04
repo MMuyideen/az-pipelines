@@ -1,34 +1,27 @@
-trigger: none 
-pr: none 
+trigger: none
+pr: none
  
-pool: 
+pool:
   vmImage: 'ubuntu-latest'
  
+
+template: ./template.yaml
 parameters:
-- name: stages
-  type: object
-  default:
-    - 'dev'
-    - 'prod'
- 
-stages:
-- stage: build
-  displayName: 'Build/Package Code or IaC' 
-  jobs: 
-  - job: build
-    displayName: 'Build/Package Code'
-    steps:
-    # Steps to perform the build and/or package of code or IaC
- 
-- ${{ each stage in parameters.stages }}:
-  - stage: ${{ stage }}
-    displayName: 'Deploy to ${{ stage }}'
-    jobs:
-    - deployment: deploy_${{ stage }}
-      displayName: 'Deploy app to ${{ stage }}'
-      environment: ${{ stage }}
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-            # Steps to perform the deployment
+  buildSteps:
+  - task: CopyFiles@2
+    displayName: 'Copy Files to output'
+    inputs:
+      contents: |
+        **/infrastructure/**
+      targetFolder: $(Build.ArtifactStagingDirectory)
+  - task: ArchiveFiles@2
+    displayName: 'Archive Infrastructure'
+    inputs:
+      rootFolderOrFile: $(Build.ArtifactStagingDirectory)
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/infrastructure$(Build.BuildId).zip'
+  - publish: $(Build.ArtifactStagingDirectory)/infrastructure$(Build.BuildId).zip
+    displayName: 'Upload Infrastructure package'
+    artifact: infrastructure
+  customReleaseTemplate: deploy-infrastructure.yml@self

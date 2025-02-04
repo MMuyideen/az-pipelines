@@ -1,0 +1,78 @@
+parameters:
+- name: environments
+  type: object
+  default:
+  - name: 'dev'
+    subscriptions:
+      - subscription: 'Dev Subscription'
+        regions:
+          - location: 'eastus'
+            locationShort: 'eus'
+  - name: 'qa'
+    subscriptions:
+      - subscription: 'QA Subscription'
+        regions:
+          - location: 'eastus'
+            locationShort: 'eus'
+          - location: 'westus'
+            locationShort: 'wus'
+  - name: 'prod'
+    subscriptions:
+      - subscription: 'Prod Subscription'
+        regions:
+          - location: 'eastus'
+            locationShort: 'eus'
+          - location: 'westus'
+            locationShort: 'wus'
+- name: buildSteps
+  type: stepList
+  default: []
+- name: releaseSteps
+  type: stepList
+  default: []
+- name: customReleaseTemplate
+  type: string
+  default: ''
+- name: variableGroupPrefix
+  type: string
+  default: ''
+- name: variableFilePrefix
+  type: string
+  default: ''
+  
+stages:
+- stage: build
+  displayName: 'Build/Package Code or IaC'
+  jobs:
+  - job: build
+    displayName: 'Build/Package Code'
+    steps: ${{ parameters.buildSteps }}
+  
+- ${{ each env in parameters.environments }}:
+  - stage: ${{ env.name }}
+    displayName: 'Deploy to ${{ env.name }}'
+    condition: succeeded()
+    variables:
+      - ${{ if ne(parameters.variableFilePrefix, '') }}:
+        - template: ${{ parameters.variableFilePrefix }}_${{ env.name }}.yml@self
+      - ${{ if ne(parameters.variableGroupPrefix, '') }}:
+        - group: ${{ parameters.variableGroupPrefix }}_${{ env.name }}
+    jobs:
+    - ${{ each sub in env.subscriptions }}:
+      - ${{ each region in sub.regions }}:
+        - ${{ if ne(parameters.customReleaseTemplate, '') }}:
+          - template: ${{ parameters.customReleaseTemplate }}
+            parameters:
+               env: ${{ env.name }}
+               location: ${{ region.location }}
+               locationShort: ${{ region.locationShort }}
+               subscription: ${{ sub.subscription }}
+        - ${{ else }}:
+          - deployment: deploy_${{ region.locationShort }}
+            displayName: 'Deploy app to ${{ env.name }} in ${{ region.location }}'
+            environment: ${{ env.name }}_${{ region.locationShort }}
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                  - ${{ parameters.releaseSteps }}
